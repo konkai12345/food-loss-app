@@ -4,10 +4,7 @@ import 'package:provider/provider.dart';
 import 'themes/natural_eco_theme_fixed.dart';
 import 'screens/home_screen_improved.dart';
 import 'screens/shopping_list_screen.dart';
-import 'screens/analytics_screen.dart';
-import 'screens/qr_code_generator_screen.dart';
 import 'screens/inventory_management_screen.dart';
-import 'screens/purchase_management_screen.dart';
 import 'screens/family_management_screen.dart';
 import 'services/notification_service_simple.dart';
 import 'providers/shopping_provider.dart';
@@ -43,10 +40,7 @@ class FoodLossApp extends StatelessWidget {
         home: const MainScreen(),
         routes: {
           '/shopping_list': (context) => const ShoppingListScreen(),
-          '/analytics': (context) => const AnalyticsScreen(),
-          '/qr_generator': (context) => const QRCodeGeneratorScreen(),
           '/inventory': (context) => const InventoryManagementScreen(),
-          '/purchase': (context) => const PurchaseManagementScreen(),
           '/family': (context) => const FamilyManagementScreen(),
         },
       ),
@@ -67,10 +61,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = [
     const HomeScreenImproved(),
     const ShoppingListScreen(),
-    const AnalyticsScreen(),
-    const QRCodeGeneratorScreen(),
     const InventoryManagementScreen(),
-    const PurchaseManagementScreen(),
     const FamilyManagementScreen(),
   ];
 
@@ -95,20 +86,8 @@ class _MainScreenState extends State<MainScreen> {
             label: '買い物リスト',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.analytics),
-            label: '分析',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.qr_code),
-            label: 'QRコード',
-          ),
-          BottomNavigationBarItem(
             icon: Icon(Icons.inventory),
             label: '在庫管理',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.receipt_long),
-            label: '購入管理',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.family_restroom),
