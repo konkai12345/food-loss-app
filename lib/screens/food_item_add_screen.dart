@@ -8,14 +8,14 @@ import '../services/barcode_api_service.dart';
 import '../utils/error_handler.dart';
 import '../widgets/barcode_scanner_dialog.dart';
 
-class FoodAddScreen extends StatefulWidget {
-  const FoodAddScreen({super.key});
+class FoodItemAddScreen extends StatefulWidget {
+  const FoodItemAddScreen({super.key});
 
   @override
-  State<FoodAddScreen> createState() => _FoodAddScreenState();
+  State<FoodItemAddScreen> createState() => _FoodItemAddScreenState();
 }
 
-class _FoodAddScreenState extends State<FoodAddScreen> {
+class _FoodItemAddScreenState extends State<FoodItemAddScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _quantityController = TextEditingController();

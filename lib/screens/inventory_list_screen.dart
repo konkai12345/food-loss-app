@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import '../models/food_item.dart';
-import '../services/inventory_service.dart';
+import '../services/database_service.dart';
 import '../themes/natural_eco_theme_fixed.dart';
 import '../widgets/natural_eco_components.dart';
 
-class InventoryManagementScreen extends StatefulWidget {
-  const InventoryManagementScreen({super.key});
+class InventoryListScreen extends StatefulWidget {
+  const InventoryListScreen({super.key});
 
   @override
-  State<InventoryManagementScreen> createState() => _InventoryManagementScreenState();
+  State<InventoryListScreen> createState() => _InventoryListScreenState();
 }
 
-class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
+class _InventoryListScreenState extends State<InventoryListScreen> {
   List<FoodItem> _inventoryItems = [];
   List<FoodItem> _filteredItems = [];
   bool _isLoading = true;
@@ -31,7 +31,7 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen> {
     });
 
     try {
-      final items = await InventoryService.getInventoryStatus();
+      final items = await DatabaseService.getAllFoodItems();
       setState(() {
         _inventoryItems = items;
         _filteredItems = items;

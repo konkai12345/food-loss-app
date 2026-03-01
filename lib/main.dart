@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'providers/shopping_provider.dart';
 import 'screens/home_screen_improved.dart';
 import 'screens/shopping_list_screen.dart';
-import 'screens/inventory_management_screen.dart';
+import 'screens/inventory_list_screen.dart';
 import 'themes/natural_eco_theme_fixed.dart';
 import 'services/notification_service_simple.dart';
 
@@ -32,7 +32,7 @@ class FoodLossApp extends StatelessWidget {
         home: const MainScreen(),
         routes: {
           '/shopping_list': (context) => const ShoppingListScreen(),
-          '/inventory': (context) => const InventoryManagementScreen(),
+          '/inventory': (context) => const InventoryListScreen(),
         },
       ),
     );

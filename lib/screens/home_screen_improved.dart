@@ -3,8 +3,7 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import '../models/food_item.dart';
 import '../services/database_service.dart';
 import '../utils/error_handler.dart';
-import 'food_add_screen.dart';
-import 'food_edit_screen.dart';
+import 'food_item_add_screen.dart';
 import 'notification_settings_screen.dart';
 import 'notification_history_screen.dart';
 
@@ -130,7 +129,7 @@ class _HomeScreenImprovedState extends State<HomeScreenImproved>
   void _navigateToAddScreen() async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const FoodAddScreen()),
+      MaterialPageRoute(builder: (context) => const FoodItemAddScreen()),
     );
     
     if (result == true) {
@@ -138,20 +137,121 @@ class _HomeScreenImprovedState extends State<HomeScreenImproved>
     }
   }
 
-  void _navigateToEditScreen(FoodItem foodItem) async {
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => FoodEditScreen(foodItem: foodItem),
+  Widget _buildFoodItemCard(FoodItem foodItem) {
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      color: _getCategoryBackgroundColor(foodItem.category),
+      child: InkWell(
+        onTap: () => _showDeleteConfirmation(foodItem),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              _buildCategoryIcon(foodItem.category),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      foodItem.name,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.location_on, size: 14, color: Colors.grey.shade600),
+                        const SizedBox(width: 4),
+                        Text(
+                          foodItem.storageLocation,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              // 横並び3要素：数量・消費期限・消費ボタン（大きく）
+              Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // 数量（大きく）
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.blue.shade200, width: 1.5),
+                        ),
+                        child: Text(
+                          '${foodItem.quantity}個',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            color: Colors.blue.shade700,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    // 消費期限（大きく）
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: _getExpiryColor(foodItem.expiryDate),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          _getExpiryText(foodItem.expiryDate),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    // 消費ボタン（大きく）
+                    SizedBox(
+                      width: 65,
+                      height: 34,
+                      child: ElevatedButton(
+                        onPressed: () => _consumeFoodItem(foodItem),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: const Text(
+                          '消費',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
-    
-    if (result == true) {
-      _loadFoodItems();
-      if (mounted) {
-        AppErrorHandler.showSuccessSnackBar(context, '食材を更新しました');
-      }
-    }
   }
 
   // 食材を消費する（削除）
@@ -430,155 +530,18 @@ class _HomeScreenImprovedState extends State<HomeScreenImproved>
                           ],
                         ),
                       )
-                    : AnimatedBuilder(
-                        animation: _listAnimationController,
-                        builder: (context, child) {
-                          return ListView.builder(
-                            padding: const EdgeInsets.all(8),
-                            itemCount: _foodItems.length,
-                            itemBuilder: (context, index) {
-                              final foodItem = _foodItems[index];
-                              final animation = Tween<double>(
-                                begin: 0.0,
-                                end: 1.0,
-                              ).animate(
-                                CurvedAnimation(
-                                  parent: _listAnimationController,
-                                  curve: Interval(
-                                    (index / _foodItems.length) * 0.8,
-                                    0.8 + (index / _foodItems.length) * 0.2,
-                                    curve: Curves.easeOut,
-                                  ),
-                                ),
-                              );
-                              
-                              return FadeTransition(
-                                opacity: animation,
-                                child: SlideTransition(
-                                  position: Tween<Offset>(
-                                    begin: const Offset(0, 0.3),
-                                    end: Offset.zero,
-                                  ).animate(animation),
-                                  child: Card(
-                                    elevation: 2,
-                                    margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    color: _getCategoryBackgroundColor(foodItem.category),
-                                    child: InkWell(
-                                      onTap: () => _navigateToEditScreen(foodItem),
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(12),
-                                        child: Row(
-                                          children: [
-                                            _buildCategoryIcon(foodItem.category),
-                                            const SizedBox(width: 12),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    foodItem.name,
-                                                    style: const TextStyle(
-                                                      fontSize: 16,
-                                                      fontWeight: FontWeight.w600,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 4),
-                                                  Row(
-                                                    children: [
-                                                      Icon(Icons.location_on, size: 14, color: Colors.grey.shade600),
-                                                      const SizedBox(width: 4),
-                                                      Text(
-                                                        foodItem.storageLocation,
-                                                        style: TextStyle(
-                                                          fontSize: 12,
-                                                          color: Colors.grey.shade600,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            // 横並び3要素：数量・消費期限・消費ボタン（大きく）
-                                            Flexible(
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  // 数量（大きく）
-                                                  Flexible(
-                                                    child: Container(
-                                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                                                      decoration: BoxDecoration(
-                                                        color: Colors.blue.shade50,
-                                                        borderRadius: BorderRadius.circular(8),
-                                                        border: Border.all(color: Colors.blue.shade200, width: 1.5),
-                                                      ),
-                                                      child: Text(
-                                                        '${foodItem.quantity}個',
-                                                        style: TextStyle(
-                                                          fontWeight: FontWeight.bold,
-                                                          fontSize: 13,
-                                                          color: Colors.blue.shade700,
-                                                        ),
-                                                        overflow: TextOverflow.ellipsis,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 6),
-                                                  // 消費期限（大きく）
-                                                  Flexible(
-                                                    child: Container(
-                                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                                                      decoration: BoxDecoration(
-                                                        color: _getExpiryColor(foodItem.expiryDate),
-                                                        borderRadius: BorderRadius.circular(8),
-                                                      ),
-                                                      child: Text(
-                                                        _getExpiryText(foodItem.expiryDate),
-                                                        style: const TextStyle(
-                                                          color: Colors.white,
-                                                          fontSize: 12,
-                                                          fontWeight: FontWeight.bold,
-                                                        ),
-                                                        overflow: TextOverflow.ellipsis,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 6),
-                                                  // 消費ボタン（大きく）
-                                                  SizedBox(
-                                                    width: 65,
-                                                    height: 34,
-                                                    child: ElevatedButton(
-                                                      onPressed: () => _consumeFoodItem(foodItem),
-                                                      style: ElevatedButton.styleFrom(
-                                                        backgroundColor: Colors.green,
-                                                        foregroundColor: Colors.white,
-                                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                                                        minimumSize: Size.zero,
-                                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                                      ),
-                                                      child: const Text(
-                                                        '消費',
-                                                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          );
-                        },
-                      ),
+                    : ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      cacheExtent: 200,
+                      itemCount: _foodItems.length,
+                      itemBuilder: (context, index) {
+                        if (index >= _foodItems.length) return null;
+                        return RepaintBoundary(
+                          key: ValueKey('food_item_${_foodItems[index].id}'),
+                          child: _buildFoodItemCard(_foodItems[index]),
+                        );
+                      },
+                    ),
           ),
         ],
       ),

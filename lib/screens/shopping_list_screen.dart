@@ -86,75 +86,14 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                         ),
                       )
                     : ListView.builder(
-                        padding: const EdgeInsets.all(8),
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        cacheExtent: 150,
                         itemCount: provider.currentItems.length,
                         itemBuilder: (context, index) {
-                          final item = provider.currentItems[index];
-                          return Card(
-                            margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            child: CheckboxListTile(
-                              title: Text(
-                                item.productName,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                  decoration: item.isPurchased ? TextDecoration.lineThrough : null,
-                                  color: item.isPurchased ? Colors.grey.shade600 : Colors.black87,
-                                ),
-                              ),
-                              subtitle: Row(
-                                children: [
-                                  Text(
-                                    '数量: ${item.quantity}',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey.shade600,
-                                    ),
-                                  ),
-                                  if (item.plannedPurchaseDate != null) ...[
-                                    const SizedBox(width: 12),
-                                    Icon(Icons.calendar_today, size: 14, color: Colors.grey.shade600),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '${item.plannedPurchaseDate!.month}/${item.plannedPurchaseDate!.day}',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.grey.shade600,
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                              value: item.isPurchased,
-                              onChanged: (value) {
-                                provider.toggleItemPurchased(item);
-                              },
-                              secondary: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  SizedBox(
-                                    width: 40,
-                                    height: 40,
-                                    child: IconButton(
-                                      icon: const Icon(Icons.edit, size: 18),
-                                      onPressed: () => _showEditItemDialog(item),
-                                      padding: const EdgeInsets.all(4),
-                                    ),
-                                  ),
-                                  SizedBox(
-                                    width: 40,
-                                    height: 40,
-                                    child: IconButton(
-                                      icon: const Icon(Icons.delete, size: 18),
-                                      onPressed: () {
-                                        provider.deleteShoppingItem(item.id);
-                                      },
-                                      padding: const EdgeInsets.all(4),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                          if (index >= provider.currentItems.length) return null;
+                          return RepaintBoundary(
+                            key: ValueKey('shopping_item_${provider.currentItems[index].id}'),
+                            child: _buildShoppingItemCard(provider.currentItems[index]),
                           );
                         },
                       ),
@@ -373,6 +312,72 @@ class _ShoppingListScreenState extends State<ShoppingListScreen> {
                 }
               },
               child: const Text('更新'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShoppingItemCard(ShoppingItem item) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: CheckboxListTile(
+        title: Text(
+          item.productName,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            decoration: item.isPurchased ? TextDecoration.lineThrough : null,
+            color: item.isPurchased ? Colors.grey.shade600 : Colors.black87,
+          ),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '数量: ${item.quantity}',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade600,
+              ),
+            ),
+            if (item.plannedPurchaseDate != null)
+              Text(
+                '購入予定日: ${item.plannedPurchaseDate!.year}/${item.plannedPurchaseDate!.month}/${item.plannedPurchaseDate!.day}',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade500,
+                ),
+              ),
+          ],
+        ),
+        value: item.isPurchased,
+        onChanged: (value) {
+          context.read<ShoppingProvider>().toggleItemPurchased(item);
+        },
+        secondary: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 40,
+              height: 40,
+              child: IconButton(
+                icon: const Icon(Icons.edit, size: 18),
+                onPressed: () => _showEditItemDialog(item),
+                padding: const EdgeInsets.all(4),
+              ),
+            ),
+            SizedBox(
+              width: 40,
+              height: 40,
+              child: IconButton(
+                icon: const Icon(Icons.delete, size: 18),
+                onPressed: () {
+                  context.read<ShoppingProvider>().deleteShoppingItem(item.id);
+                },
+                padding: const EdgeInsets.all(4),
+              ),
             ),
           ],
         ),
