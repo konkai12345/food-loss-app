@@ -10,6 +10,74 @@ class NaturalEcoThemeFixed {
   static const Color lightGrey = Color(0xFFF5F5F5);         // 薄グレー
   static const Color mediumGrey = Color(0xFF757575);        // 中グレー
   static const Color darkGrey = Color(0xFF424242);         // 濃グレー
+  static const Color lightBrown = Color(0xFFA1887F);        // 薄茶色
+  static const Color darkGreen = Color(0xFF2E7D32);         // 濃緑色
+
+  // グラデーション
+  static const LinearGradient primaryGradient = LinearGradient(
+    colors: [primaryGreen, Color(0xFF388E3C)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  // デコレーション
+  static BoxDecoration cardDecoration = BoxDecoration(
+    color: white,
+    borderRadius: BorderRadius.circular(15),
+    boxShadow: [
+      BoxShadow(
+        color: woodBrown.withOpacity(0.1),
+        blurRadius: 10,
+        offset: const Offset(0, 4),
+      ),
+    ],
+  );
+
+  static BoxDecoration expiredCardDecoration = BoxDecoration(
+    color: Colors.red.withOpacity(0.05),
+    borderRadius: BorderRadius.circular(15),
+    border: Border.all(color: Colors.red.withOpacity(0.2)),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.red.withOpacity(0.1),
+        blurRadius: 10,
+        offset: const Offset(0, 4),
+      ),
+    ],
+  );
+
+  static BoxDecoration expiringCardDecoration = BoxDecoration(
+    color: Colors.orange.withOpacity(0.05),
+    borderRadius: BorderRadius.circular(15),
+    border: Border.all(color: Colors.orange.withOpacity(0.2)),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.orange.withOpacity(0.1),
+        blurRadius: 10,
+        offset: const Offset(0, 4),
+      ),
+    ],
+  );
+
+  static BoxDecoration statCardDecoration = BoxDecoration(
+    gradient: const LinearGradient(
+      colors: [white, Color(0xFFF8F8F8)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    borderRadius: BorderRadius.circular(20),
+    boxShadow: [
+      BoxShadow(
+        color: woodBrown.withOpacity(0.15),
+        blurRadius: 15,
+        offset: const Offset(0, 6),
+      ),
+    ],
+    border: Border.all(
+      color: woodBrown.withOpacity(0.1),
+      width: 1,
+    ),
+  );
 
   // シンプルなテーマ
   static ThemeData get theme {

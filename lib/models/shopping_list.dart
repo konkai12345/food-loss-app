@@ -5,12 +5,14 @@ class ShoppingList {
   final String name;
   final DateTime createdDate;
   final bool isCompleted;
+  final DateTime? plannedPurchaseDate;
 
   ShoppingList({
     required this.id,
     required this.name,
     required this.createdDate,
     this.isCompleted = false,
+    this.plannedPurchaseDate,
   });
 
   Map<String, dynamic> toJson() => {
@@ -18,6 +20,7 @@ class ShoppingList {
         'name': name,
         'createdDate': createdDate.toIso8601String(),
         'isCompleted': isCompleted,
+        'plannedPurchaseDate': plannedPurchaseDate?.toIso8601String(),
       };
 
   factory ShoppingList.fromJson(Map<String, dynamic> json) => ShoppingList(
@@ -25,6 +28,9 @@ class ShoppingList {
         name: json['name'],
         createdDate: DateTime.parse(json['createdDate']),
         isCompleted: (json['isCompleted'] as int?) == 1,
+        plannedPurchaseDate: json['plannedPurchaseDate'] != null 
+            ? DateTime.parse(json['plannedPurchaseDate']) 
+            : null,
       );
 
   ShoppingList copyWith({
@@ -32,12 +38,14 @@ class ShoppingList {
     String? name,
     DateTime? createdDate,
     bool? isCompleted,
+    DateTime? plannedPurchaseDate,
   }) {
     return ShoppingList(
       id: id ?? this.id,
       name: name ?? this.name,
       createdDate: createdDate ?? this.createdDate,
       isCompleted: isCompleted ?? this.isCompleted,
+      plannedPurchaseDate: plannedPurchaseDate ?? this.plannedPurchaseDate,
     );
   }
 

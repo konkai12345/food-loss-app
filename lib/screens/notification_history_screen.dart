@@ -92,7 +92,7 @@ class _NotificationHistoryScreenState extends State<NotificationHistoryScreen> {
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 8),
       child: InkWell(
-        onTap: () => _markAsRead(index),
+        onTap: () => _showNotificationDetail(notification),
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -214,6 +214,109 @@ class _NotificationHistoryScreenState extends State<NotificationHistoryScreen> {
               );
             },
             child: const Text('クリア', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showNotificationDetail(Map<String, dynamic> notification) {
+    final timestamp = DateTime.parse(notification['timestamp']);
+    final isRead = notification['read'] ?? false;
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Colors.green[100],
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Icon(
+                _getNotificationIcon(notification['title']),
+                color: Colors.green[700],
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                notification['title'],
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              notification['body'],
+              style: const TextStyle(
+                fontSize: 16,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
+                const SizedBox(width: 4),
+                Text(
+                  '${timestamp.year}/${timestamp.month}/${timestamp.day} ${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+            if (!isRead) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.visibility, size: 16, color: Colors.blue.shade700),
+                    const SizedBox(width: 8),
+                    Text(
+                      'この通知を確認しました',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.blue.shade700,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // 通知を既読にする
+              if (!isRead) {
+                _notificationService.markNotificationAsRead(notification['id']);
+                _loadNotifications();
+              }
+            },
+            child: const Text('閉じる'),
           ),
         ],
       ),

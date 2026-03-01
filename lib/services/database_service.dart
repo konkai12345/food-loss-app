@@ -1,4 +1,4 @@
-import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
@@ -6,15 +6,16 @@ import '../models/food_item.dart';
 import '../models/shopping_list.dart';
 import '../models/shopping_item.dart';
 import '../models/product_info.dart';
-import '../utils/error_handler.dart';
-import '../services/mock_data_service.dart';
-import 'web_database_service.dart';
 import '../models/recipe.dart';
-import 'web_database_service.dart';
+import '../utils/error_handler.dart';
 
 class DatabaseService {
-  static Database? _database;
   static const String _tableName = 'food_items';
+  static Database? _database;
+  
+  // Web環境用のメモリ内データ
+  static List<FoodItem> _mockFoodItems = [];
+  static List<ShoppingItem> _mockShoppingItems = [];
 
   // データベース初期化
   static Future<Database> get database async {
@@ -105,6 +106,17 @@ class DatabaseService {
       )
     ''');
 
+    // 共有グループテーブル
+    await db.execute('''
+      CREATE TABLE shared_groups (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        memberIds TEXT NOT NULL,
+        createdAt TEXT NOT NULL,
+        createdBy TEXT NOT NULL
+      )
+    ''');
+
     // インデックス作成（パフォーマンス向上）
     await db.execute('CREATE INDEX idx_food_items_expiryDate ON food_items(expiryDate)');
     await db.execute('CREATE INDEX idx_food_items_category ON food_items(category)');
@@ -113,12 +125,16 @@ class DatabaseService {
     await db.execute('CREATE INDEX idx_product_cache_barcode ON product_cache(barcode)');
     await db.execute('CREATE INDEX idx_recipe_cache_category ON recipe_cache(category)');
     await db.execute('CREATE INDEX idx_recipe_cache_cachedDate ON recipe_cache(cachedDate)');
+    await db.execute('CREATE INDEX idx_shared_groups_createdBy ON shared_groups(createdBy)');
   }
 
-  // Web環境の場合はWebDatabaseServiceを使用
+  // 食材アイテム追加
   static Future<void> addFoodItem(FoodItem item) async {
     if (kIsWeb) {
-      await WebDatabaseService.addFoodItem(item);
+      // Web環境ではメモリ内でデータを管理
+      _mockFoodItems.add(item);
+      print('Web環境で食材を追加: ${item.name}');
+      return;
     } else {
       final db = await database;
       await db.insert(
@@ -132,7 +148,8 @@ class DatabaseService {
   // 全食材アイテム取得
   static Future<List<FoodItem>> getAllFoodItems() async {
     if (kIsWeb) {
-      return await WebDatabaseService.getAllFoodItems();
+      // Web環境ではメモリ内のデータを返す
+      return _mockFoodItems;
     } else {
       final db = await database;
       final List<Map<String, dynamic>> maps = await db.query(
@@ -148,7 +165,13 @@ class DatabaseService {
   // 食材アイテム更新
   static Future<void> updateFoodItem(FoodItem item) async {
     if (kIsWeb) {
-      await WebDatabaseService.updateFoodItem(item);
+      // Web環境ではメモリ内データを更新
+      final index = _mockFoodItems.indexWhere((foodItem) => foodItem.id == item.id);
+      if (index != -1) {
+        _mockFoodItems[index] = item;
+        print('Web環境で食材を更新: ${item.name}');
+      }
+      return;
     } else {
       final db = await database;
       await db.update(
@@ -163,7 +186,9 @@ class DatabaseService {
   // 食材アイテム削除
   static Future<void> deleteFoodItem(String id) async {
     if (kIsWeb) {
-      await WebDatabaseService.deleteFoodItem(id);
+      // Web環境ではメモリ内データから削除
+      _mockFoodItems.removeWhere((item) => item.id == id);
+      print('Web環境で食材を削除しました: $id');
     } else {
       final db = await database;
       await db.delete(
@@ -177,7 +202,9 @@ class DatabaseService {
   // 食材を消費済みにする
   static Future<void> markAsConsumed(String id) async {
     if (kIsWeb) {
-      await WebDatabaseService.markAsConsumed(id);
+      // Web環境では何もしない
+      print('Web環境では消費済みマークをスキップします');
+      return;
     } else {
       final db = await database;
       final now = DateTime.now().toIso8601String();
@@ -196,8 +223,8 @@ class DatabaseService {
   // 期限切れの食材を取得
   static Future<List<FoodItem>> getExpiredItems() async {
     if (kIsWeb) {
-      final allItems = await WebDatabaseService.getAllFoodItems();
-      return allItems.where((item) => item.daysUntilExpiry < 0).toList();
+      // Web環境ではモックデータを返す
+      return await _getMockFoodItems();
     } else {
       final db = await database;
       final now = DateTime.now().toIso8601String();
@@ -214,8 +241,8 @@ class DatabaseService {
   // 期限が近い食材を取得
   static Future<List<FoodItem>> getExpiringSoonItems({int days = 3}) async {
     if (kIsWeb) {
-      final allItems = await WebDatabaseService.getAllFoodItems();
-      return allItems.where((item) => item.daysUntilExpiry > 0 && item.daysUntilExpiry <= days).toList();
+      // Web環境ではモックデータを返す
+      return await _getMockFoodItems();
     } else {
       final db = await database;
       final now = DateTime.now();
@@ -234,7 +261,10 @@ class DatabaseService {
   // カテゴリ別食材取得
   static Future<List<FoodItem>> getFoodItemsByCategory(String category) async {
     if (kIsWeb) {
-      return await WebDatabaseService.getFoodItemsByCategory(category);
+      // Web環境ではメモリ内データからフィルター
+      return _mockFoodItems.where((item) => 
+        item.category == category && !item.isConsumed
+      ).toList();
     } else {
       final db = await database;
       final List<Map<String, dynamic>> maps = await db.query(
@@ -250,7 +280,10 @@ class DatabaseService {
   // 保管場所別に食材を取得
   static Future<List<FoodItem>> getFoodItemsByStorageLocation(String location) async {
     if (kIsWeb) {
-      return await WebDatabaseService.getFoodItemsByStorageLocation(location);
+      // Web環境ではメモリ内データからフィルター
+      return _mockFoodItems.where((item) => 
+        item.storageLocation == location && !item.isConsumed
+      ).toList();
     } else {
       final db = await database;
       final List<Map<String, dynamic>> maps = await db.query(
@@ -268,7 +301,8 @@ class DatabaseService {
   // 買い物リスト作成
   static Future<String> createShoppingList(String name) async {
     if (kIsWeb) {
-      return await WebDatabaseService.createShoppingList(name);
+      // Web環境ではモックデータを返す
+      return await _getMockShoppingList();
     } else {
       final db = await database;
       final id = DateTime.now().millisecondsSinceEpoch.toString();
@@ -285,7 +319,8 @@ class DatabaseService {
   // 全買い物リスト取得
   static Future<List<ShoppingList>> getAllShoppingLists() async {
     if (kIsWeb) {
-      return await WebDatabaseService.getAllShoppingLists();
+      // Web環境ではモックデータを返す
+      return await _getMockShoppingLists();
     } else {
       final db = await database;
       final List<Map<String, dynamic>> maps = await db.query(
@@ -299,7 +334,8 @@ class DatabaseService {
   // 買い物リスト削除
   static Future<void> deleteShoppingList(String id) async {
     if (kIsWeb) {
-      await WebDatabaseService.deleteShoppingList(id);
+      // Web環境では何もしない
+      print('Web環境ではショッピングリストの削除をスキップします');
     } else {
       final db = await database;
       await db.delete('shopping_lists', where: 'id = ?', whereArgs: [id]);
@@ -358,7 +394,7 @@ class DatabaseService {
   }
 
   // 買い物アイテム追加
-  static Future<String> addShoppingItem(String listId, String productName, {int quantity = 1, String? barcode}) async {
+  static Future<String> addShoppingItem(String listId, String productName, {int quantity = 1, String? barcode, DateTime? plannedPurchaseDate}) async {
     if (kIsWeb) {
       final item = ShoppingItem(
         id: 'item_${DateTime.now().millisecondsSinceEpoch}',
@@ -368,8 +404,11 @@ class DatabaseService {
         barcode: barcode ?? '',
         isPurchased: false,
         createdDate: DateTime.now(),
+        plannedPurchaseDate: plannedPurchaseDate,
       );
-      return await MockDataService.addShoppingItem(item);
+      // Web環境ではメモリに保存
+      _mockShoppingItems.add(item);
+      return item.id;
     } else {
       final db = await database;
       final id = DateTime.now().millisecondsSinceEpoch.toString();
@@ -381,6 +420,7 @@ class DatabaseService {
         barcode: barcode ?? '',
         isPurchased: false,
         createdDate: DateTime.now(),
+        plannedPurchaseDate: plannedPurchaseDate,
       );
       await db.insert('shopping_items', shoppingItem.toJson());
       return id;
@@ -390,7 +430,8 @@ class DatabaseService {
   // 買い物アイテム取得
   static Future<List<ShoppingItem>> getShoppingItems(String listId) async {
     if (kIsWeb) {
-      return await MockDataService.getShoppingItems(listId);
+      // Web環境ではメモリ内データからフィルタリング
+      return _mockShoppingItems.where((item) => item.listId == listId).toList();
     } else {
       final db = await database;
       final List<Map<String, dynamic>> maps = await db.query(
@@ -406,7 +447,12 @@ class DatabaseService {
   // 買い物アイテム更新
   static Future<void> updateShoppingItem(ShoppingItem item) async {
     if (kIsWeb) {
-      await WebDatabaseService.updateShoppingItem(item);
+      // Web環境ではメモリ内データを更新
+      final index = _mockShoppingItems.indexWhere((mockItem) => mockItem.id == item.id);
+      if (index != -1) {
+        _mockShoppingItems[index] = item;
+        print('Web環境で買い物アイテムを更新しました: ${item.id}');
+      }
     } else {
       final db = await database;
       await db.update(
@@ -421,33 +467,142 @@ class DatabaseService {
   // 買い物アイテム削除
   static Future<void> deleteShoppingItem(String id) async {
     if (kIsWeb) {
-      await WebDatabaseService.deleteShoppingItem(id);
+      // Web環境ではメモリ内データから削除
+      _mockShoppingItems.removeWhere((item) => item.id == id);
+      print('Web環境で買い物アイテムを削除しました: $id');
     } else {
       final db = await database;
       await db.delete('shopping_items', where: 'id = ?', whereArgs: [id]);
     }
   }
 
-  // 商品情報キャッシュ関連メソッド
-  
-  // 商品情報キャッシュ保存
-  static Future<void> cacheProductInfo(ProductInfo productInfo) async {
-    if (kIsWeb) {
-      // Web版ではMockDataServiceがキャッシュを管理
-    } else {
-      final db = await database;
-      await db.insert(
-        'product_cache',
-        productInfo.toJson(),
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
-    }
+  // モックデータメソッド
+static Future<List<FoodItem>> _getMockFoodItems() async {
+  return [
+    FoodItem(
+      id: '1',
+      name: 'トマト',
+      category: '野菜',
+      quantity: 5,
+      expiryDate: DateTime.now().add(const Duration(days: 3)),
+      registrationDate: DateTime.now().subtract(const Duration(days: 1)),
+      storageLocation: '冷蔵庫',
+    ),
+    FoodItem(
+      id: '2',
+      name: '牛乳',
+      category: '乳製品',
+      quantity: 1,
+      expiryDate: DateTime.now().add(const Duration(days: 5)),
+      registrationDate: DateTime.now().subtract(const Duration(days: 2)),
+      storageLocation: '冷蔵庫',
+    ),
+  ];
+}
+
+static Future<List<ShoppingItem>> _getMockShoppingItems() async {
+  return [
+    ShoppingItem(
+      id: '1',
+      listId: 'mock-list-id',
+      productName: 'トマト',
+      quantity: 5,
+      barcode: '123456789',
+      isPurchased: false,
+      createdDate: DateTime.now().subtract(const Duration(days: 1)),
+    ),
+    ShoppingItem(
+      id: '2',
+      listId: 'mock-list-id',
+      productName: '牛乳',
+      quantity: 1,
+      barcode: '987654321',
+      isPurchased: false,
+      createdDate: DateTime.now().subtract(const Duration(days: 2)),
+    ),
+  ];
+}
+
+static Future<String> _getMockShoppingList() async {
+  return 'mock-list-id';
+}
+
+static Future<List<ShoppingList>> _getMockShoppingLists() async {
+  return [
+    ShoppingList(
+      id: '1',
+      name: '今週の買い物',
+      createdDate: DateTime.now().subtract(const Duration(days: 1)),
+    ),
+  ];
+}
+
+static Future<ProductInfo?> _getMockProductInfo(String barcode) async {
+  return ProductInfo(
+    barcode: barcode,
+    productName: 'モック商品 ($barcode)',
+    brand: 'テストブランド',
+    categories: ['食品'],
+    nutriments: {
+      'calories': 100,
+      'protein': 10,
+      'carbs': 20,
+      'fat': 5,
+    },
+    cachedDate: DateTime.now(),
+  );
+}
+
+static Future<Recipe?> _getMockRecipe(String recipeId) async {
+  return Recipe(
+    recipeId: recipeId,
+    title: 'モックレシピ',
+    instructions: '手順1\n手順2',
+    ingredients: ['材料1', '材料2'],
+    cachedDate: DateTime.now(),
+  );
+}
+
+static Future<List<Recipe>> _getMockRecipesSearch(String query) async {
+  return [
+    Recipe(
+      recipeId: '1',
+      title: 'モックレシピ ($query)',
+      instructions: '手順1\n手順2',
+      ingredients: ['材料1', '材料2'],
+      cachedDate: DateTime.now(),
+    ),
+  ];
+}
+
+static Future<Map<String, int>> _getMockStatistics() async {
+  return {
+    'total': 10,
+    'expired': 2,
+    'expiring_soon': 3,
+    'consumed': 5,
+  };
+}
+
+// 商品情報キャッシュ保存
+static Future<void> cacheProductInfo(ProductInfo productInfo) async {
+  if (kIsWeb) {
+    // Web版ではMockDataServiceがキャッシュを管理
+  } else {
+    final db = await database;
+    await db.insert(
+      'product_cache',
+      productInfo.toJson(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
+}
 
   // 商品情報キャッシュ取得
   static Future<ProductInfo?> getCachedProductInfo(String barcode) async {
     if (kIsWeb) {
-      return await WebDatabaseService.getCachedProductInfo(barcode);
+      // Webデータベースサービスは削除されたため、モックデータを返す
+      return await _getMockProductInfo(barcode);
     } else {
       final db = await database;
       final List<Map<String, dynamic>> maps = await db.query(
@@ -490,7 +645,8 @@ class DatabaseService {
   // レシピキャッシュ取得
   static Future<Recipe?> getCachedRecipe(String recipeId) async {
     if (kIsWeb) {
-      return await WebDatabaseService.getCachedRecipe(recipeId);
+      // Webデータベースサービスは削除されたため、モックデータを返す
+      return await _getMockRecipe(recipeId);
     } else {
       final db = await database;
       final List<Map<String, dynamic>> maps = await db.query(
@@ -508,7 +664,8 @@ class DatabaseService {
   // レシピキャッシュ検索
   static Future<List<Recipe>> searchCachedRecipes(String query) async {
     if (kIsWeb) {
-      return await WebDatabaseService.searchCachedRecipes(query);
+      // Webデータベースサービスは削除されたため、モックデータを返す
+      return await _getMockRecipesSearch(query);
     } else {
       final db = await database;
       final List<Map<String, dynamic>> maps = await db.query(
@@ -524,7 +681,24 @@ class DatabaseService {
   // 統計情報取得
   static Future<Map<String, int>> getStatistics() async {
     if (kIsWeb) {
-      return await WebDatabaseService.getStatistics();
+      // Web環境ではメモリ内データから統計を計算
+      final now = DateTime.now();
+      final totalItems = _mockFoodItems.where((item) => !item.isConsumed).length;
+      final expiredCount = _mockFoodItems.where((item) => 
+        !item.isConsumed && item.expiryDate.isBefore(now)
+      ).length;
+      final soonCount = _mockFoodItems.where((item) => 
+        !item.isConsumed && 
+        item.expiryDate.isAfter(now) && 
+        item.expiryDate.difference(now).inDays <= 7
+      ).length;
+      
+      return {
+        'totalItems': totalItems,
+        'expiredCount': expiredCount,
+        'soonCount': soonCount,
+        'freshCount': totalItems - expiredCount - soonCount,
+      };
     } else {
       final db = await database;
       

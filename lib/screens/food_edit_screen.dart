@@ -27,7 +27,7 @@ class _FoodEditScreenState extends State<FoodEditScreen> {
   String? _imagePath;
 
   final List<String> _categories = [
-    '野菜', '果物', '肉', '魚', '乳製品', '調味料', 'その他'
+    '野菜', '果物', '肉', '魚', '乳製品', '飲料', 'お菓子', '加工食品', 'パン・穀物', '調味料', 'その他'
   ];
 
   final List<String> _storageLocations = [

@@ -1,8 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import '../services/open_food_facts_service.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import '../models/food_item.dart';
+import '../models/product_info.dart';
 import '../services/cache_service.dart';
+import '../services/database_service.dart';
+import '../themes/natural_eco_theme_fixed.dart';
+import '../widgets/natural_eco_components.dart';
 import '../utils/error_handler.dart';
+
+// モックデータメソッド
+Future<ProductInfo?> _getMockProductInfo(String barcode) async {
+  // モック商品情報を返す
+  return ProductInfo(
+    barcode: barcode,
+    productName: 'モック商品 ($barcode)',
+    brand: 'テストブランド',
+    categories: ['食品'],
+    nutriments: {
+      'calories': 100,
+      'protein': 10,
+      'carbs': 20,
+      'fat': 5,
+    },
+    cachedDate: DateTime.now(),
+  );
+}
 
 class BarcodeScannerScreen extends StatefulWidget {
   const BarcodeScannerScreen({super.key});
@@ -265,7 +288,8 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
         });
       } else {
         // APIで商品情報を検索
-        final productInfo = await OpenFoodFactsService.getProductByBarcode(barcode);
+        // OpenFoodFactsサービスは削除されたため、モックデータを返す
+        final productInfo = await _getMockProductInfo(barcode);
         
         if (productInfo != null) {
           // キャッシュに保存

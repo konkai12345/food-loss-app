@@ -8,6 +8,7 @@ class ShoppingItem {
   final String? barcode;
   final bool isPurchased;
   final DateTime createdDate;
+  final DateTime? plannedPurchaseDate;
 
   ShoppingItem({
     required this.id,
@@ -17,6 +18,7 @@ class ShoppingItem {
     this.barcode,
     this.isPurchased = false,
     required this.createdDate,
+    this.plannedPurchaseDate,
   });
 
   Map<String, dynamic> toJson() => {
@@ -27,6 +29,7 @@ class ShoppingItem {
         'barcode': barcode,
         'isPurchased': isPurchased,
         'createdDate': createdDate.toIso8601String(),
+        'plannedPurchaseDate': plannedPurchaseDate?.toIso8601String(),
       };
 
   factory ShoppingItem.fromJson(Map<String, dynamic> json) => ShoppingItem(
@@ -37,6 +40,9 @@ class ShoppingItem {
         barcode: json['barcode'],
         isPurchased: (json['isPurchased'] as int?) == 1,
         createdDate: DateTime.parse(json['createdDate']),
+        plannedPurchaseDate: json['plannedPurchaseDate'] != null 
+            ? DateTime.parse(json['plannedPurchaseDate']) 
+            : null,
       );
 
   ShoppingItem copyWith({
@@ -47,6 +53,7 @@ class ShoppingItem {
     String? barcode,
     bool? isPurchased,
     DateTime? createdDate,
+    DateTime? plannedPurchaseDate,
   }) {
     return ShoppingItem(
       id: id ?? this.id,
@@ -56,6 +63,7 @@ class ShoppingItem {
       barcode: barcode ?? this.barcode,
       isPurchased: isPurchased ?? this.isPurchased,
       createdDate: createdDate ?? this.createdDate,
+      plannedPurchaseDate: plannedPurchaseDate ?? this.plannedPurchaseDate,
     );
   }
 

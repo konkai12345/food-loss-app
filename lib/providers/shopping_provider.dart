@@ -82,20 +82,20 @@ class ShoppingProvider extends ChangeNotifier {
   }
 
   // 買い物アイテム追加
-  Future<String> addShoppingItem(String productName, {int quantity = 1, String? barcode}) async {
-    if (_currentList == null) {
-      throw Exception('No shopping list selected');
-    }
+  Future<String> addShoppingItem(String productName, {int quantity = 1, String? barcode, DateTime? plannedPurchaseDate}) async {
+    // 単一リスト形式のため、デフォルトリストIDを使用
+    const listId = 'default_list';
 
     _setLoading(true);
     try {
       final itemId = await DatabaseService.addShoppingItem(
-        _currentList!.id,
+        listId,
         productName,
         quantity: quantity,
         barcode: barcode,
+        plannedPurchaseDate: plannedPurchaseDate,
       );
-      await loadShoppingItems(_currentList!.id);
+      await loadShoppingItems(listId);
       return itemId;
     } catch (e) {
       AppErrorHandler.handleError(e, StackTrace.current, context: 'ShoppingProvider.addShoppingItem');
@@ -110,7 +110,7 @@ class ShoppingProvider extends ChangeNotifier {
     _setLoading(true);
     try {
       await DatabaseService.updateShoppingItem(item);
-      await loadShoppingItems(item.listId);
+      await loadShoppingItems('default_list');
     } catch (e) {
       AppErrorHandler.handleError(e, StackTrace.current, context: 'ShoppingProvider.updateShoppingItem');
     } finally {
@@ -123,9 +123,7 @@ class ShoppingProvider extends ChangeNotifier {
     _setLoading(true);
     try {
       await DatabaseService.deleteShoppingItem(itemId);
-      if (_currentList != null) {
-        await loadShoppingItems(_currentList!.id);
-      }
+      await loadShoppingItems('default_list');
     } catch (e) {
       AppErrorHandler.handleError(e, StackTrace.current, context: 'ShoppingProvider.deleteShoppingItem');
     } finally {

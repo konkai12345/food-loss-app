@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import '../models/food_item.dart';
-import '../widgets/food_item_card_animated.dart';
 import '../services/database_service.dart';
 import '../utils/error_handler.dart';
 import 'food_add_screen.dart';
@@ -31,7 +30,7 @@ class _HomeScreenImprovedState extends State<HomeScreenImproved>
   int _expiringSoonItems = 0;
 
   final List<String> _categories = [
-    'すべて', '野菜', '果物', '肉', '魚', '乳製品', '調味料', 'その他'
+    'すべて', '野菜', '果物', '肉', '魚', '乳製品', '飲料', 'お菓子', '加工食品', 'パン・穀物', '調味料', 'その他'
   ];
 
   final List<String> _storageLocations = [
@@ -136,9 +135,6 @@ class _HomeScreenImprovedState extends State<HomeScreenImproved>
     
     if (result == true) {
       _loadFoodItems();
-      if (mounted) {
-        AppErrorHandler.showSuccessSnackBar(context, '食材を追加しました');
-      }
     }
   }
 
@@ -154,6 +150,59 @@ class _HomeScreenImprovedState extends State<HomeScreenImproved>
       _loadFoodItems();
       if (mounted) {
         AppErrorHandler.showSuccessSnackBar(context, '食材を更新しました');
+      }
+    }
+  }
+
+  // 食材を消費する（削除）
+  Future<void> _consumeFoodItem(FoodItem foodItem) async {
+    try {
+      // 確認ダイアログ
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('確認'),
+          content: Text('${foodItem.name}を消費済みとして削除してもよろしいですか？'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('キャンセル'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+              child: const Text('消費する'),
+            ),
+          ],
+        ),
+      );
+      
+      if (confirmed == true) {
+        // データベースから削除
+        await DatabaseService.deleteFoodItem(foodItem.id);
+        
+        // リストを再読み込み
+        await _loadFoodItems();
+        
+        // 成功メッセージ
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${foodItem.name}を消費しました'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('削除に失敗しました: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -216,7 +265,7 @@ class _HomeScreenImprovedState extends State<HomeScreenImproved>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('食品ロス削減アプリ'),
+        title: const Text('在庫管理'),
         backgroundColor: Colors.green,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -248,14 +297,15 @@ class _HomeScreenImprovedState extends State<HomeScreenImproved>
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Colors.green.shade400,
-                  Colors.green.shade600,
-                ],
-              ),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.1),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -263,44 +313,28 @@ class _HomeScreenImprovedState extends State<HomeScreenImproved>
                 const Text(
                   '在庫状況',
                   style: TextStyle(
-                    color: Colors.white,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
+                    color: Colors.black87,
                   ),
                 ),
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    _buildStatCard('総数', _totalItems.toString(), Colors.white),
-                    const SizedBox(width: 12),
-                    _buildStatCard('期限切れ', _expiredItems.toString(), Colors.red.shade100),
-                    const SizedBox(width: 12),
-                    _buildStatCard('期限近い', _expiringSoonItems.toString(), Colors.orange.shade100),
+                    Expanded(
+                      child: _buildSimpleStatCard('総数', _totalItems.toString(), Colors.blue.shade50),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildSimpleStatCard('期限切れ', _expiredItems.toString(), Colors.red.shade50),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildSimpleStatCard('期限近い', _expiringSoonItems.toString(), Colors.orange.shade50),
+                    ),
                   ],
                 ),
               ],
-            ),
-          ),
-          
-          // 検索バー
-          Container(
-            padding: const EdgeInsets.all(16),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: '食材を検索...',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                filled: true,
-                fillColor: Colors.grey.shade100,
-              ),
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value;
-                });
-                _loadFoodItems();
-              },
             ),
           ),
           
@@ -425,12 +459,119 @@ class _HomeScreenImprovedState extends State<HomeScreenImproved>
                                     begin: const Offset(0, 0.3),
                                     end: Offset.zero,
                                   ).animate(animation),
-                                  child: FoodItemCardAnimated(
-                                    foodItem: foodItem,
-                                    onTap: () => _navigateToEditScreen(foodItem),
-                                    onEdit: () => _navigateToEditScreen(foodItem),
-                                    onDelete: () => _showDeleteConfirmation(foodItem),
-                                    onConsume: () => _markAsConsumed(foodItem),
+                                  child: Card(
+                                    elevation: 2,
+                                    margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    color: _getCategoryBackgroundColor(foodItem.category),
+                                    child: InkWell(
+                                      onTap: () => _navigateToEditScreen(foodItem),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(12),
+                                        child: Row(
+                                          children: [
+                                            _buildCategoryIcon(foodItem.category),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    foodItem.name,
+                                                    style: const TextStyle(
+                                                      fontSize: 16,
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  Row(
+                                                    children: [
+                                                      Icon(Icons.location_on, size: 14, color: Colors.grey.shade600),
+                                                      const SizedBox(width: 4),
+                                                      Text(
+                                                        foodItem.storageLocation,
+                                                        style: TextStyle(
+                                                          fontSize: 12,
+                                                          color: Colors.grey.shade600,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            // 横並び3要素：数量・消費期限・消費ボタン（大きく）
+                                            Flexible(
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  // 数量（大きく）
+                                                  Flexible(
+                                                    child: Container(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.blue.shade50,
+                                                        borderRadius: BorderRadius.circular(8),
+                                                        border: Border.all(color: Colors.blue.shade200, width: 1.5),
+                                                      ),
+                                                      child: Text(
+                                                        '${foodItem.quantity}個',
+                                                        style: TextStyle(
+                                                          fontWeight: FontWeight.bold,
+                                                          fontSize: 13,
+                                                          color: Colors.blue.shade700,
+                                                        ),
+                                                        overflow: TextOverflow.ellipsis,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 6),
+                                                  // 消費期限（大きく）
+                                                  Flexible(
+                                                    child: Container(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                                      decoration: BoxDecoration(
+                                                        color: _getExpiryColor(foodItem.expiryDate),
+                                                        borderRadius: BorderRadius.circular(8),
+                                                      ),
+                                                      child: Text(
+                                                        _getExpiryText(foodItem.expiryDate),
+                                                        style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 12,
+                                                          fontWeight: FontWeight.bold,
+                                                        ),
+                                                        overflow: TextOverflow.ellipsis,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 6),
+                                                  // 消費ボタン（大きく）
+                                                  SizedBox(
+                                                    width: 65,
+                                                    height: 34,
+                                                    child: ElevatedButton(
+                                                      onPressed: () => _consumeFoodItem(foodItem),
+                                                      style: ElevatedButton.styleFrom(
+                                                        backgroundColor: Colors.green,
+                                                        foregroundColor: Colors.white,
+                                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                                        minimumSize: Size.zero,
+                                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                                      ),
+                                                      child: const Text(
+                                                        '消費',
+                                                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
                               );
@@ -455,6 +596,187 @@ class _HomeScreenImprovedState extends State<HomeScreenImproved>
             ),
           );
         },
+      ),
+    );
+  }
+
+  // カテゴリに応じた背景色を取得
+  Color _getCategoryBackgroundColor(String category) {
+    switch (category) {
+      case '野菜':
+        return Colors.green.withOpacity(0.05); // 透明度を0.05に調整
+      case '果物':
+        return Colors.orange.withOpacity(0.05); // 透明度を0.05に調整
+      case '肉':
+        return Colors.brown.withOpacity(0.05); // 透明度を0.05に調整
+      case '魚':
+        return Colors.blue.withOpacity(0.05); // 透明度を0.05に調整
+      case '乳製品':
+        return Colors.brown.shade300.withOpacity(0.05); // 透明度を0.05に調整
+      case '飲料':
+        return Colors.cyan.withOpacity(0.05); // 透明度を0.05に調整
+      case 'お菓子':
+        return Colors.pink.withOpacity(0.05); // 透明度を0.05に調整
+      case '加工食品':
+        return Colors.purple.withOpacity(0.05); // 透明度を0.05に調整
+      case 'パン・穀物':
+        return Colors.amber.withOpacity(0.05); // 透明度を0.05に調整
+      case '調味料':
+        return Colors.deepOrange.withOpacity(0.05); // 透明度を0.05に調整
+      default:
+        return Colors.grey.withOpacity(0.05); // 透明度を0.05に調整
+    }
+  }
+
+  // 期限に応じた色を取得
+  Color _getExpiryColor(DateTime expiryDate) {
+    final now = DateTime.now();
+    final difference = expiryDate.difference(now);
+    
+    if (expiryDate.isBefore(now)) {
+      return Colors.red; // 期限切れ
+    } else if (difference.inDays <= 7) {
+      return Colors.orange; // 期限近い（7日以内）
+    } else {
+      return Colors.green; // まだ余裕あり
+    }
+  }
+
+  // 期限に応じたテキストを取得
+  String _getExpiryText(DateTime expiryDate) {
+    final now = DateTime.now();
+    final difference = expiryDate.difference(now);
+    
+    if (expiryDate.isBefore(now)) {
+      return '期限切れ';
+    } else if (difference.inDays <= 7) {
+      return '${difference.inDays}日';
+    } else {
+      return '${difference.inDays}日';
+    }
+  }
+
+  // カテゴリに応じた色を取得
+  Color _getCategoryColor(String category) {
+    switch (category) {
+      case '野菜':
+        return Colors.green;
+      case '果物':
+        return Colors.red;
+      case '肉':
+        return Colors.brown;
+      case '魚':
+        return Colors.blue;
+      case '乳製品':
+        return Colors.orange;
+      case '飲料':
+        return Colors.cyan;
+      case 'お菓子':
+        return Colors.pink;
+      case '加工食品':
+        return Colors.purple;
+      case 'パン・穀物':
+        return Colors.amber;
+      case '調味料':
+        return Colors.deepOrange;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  // カテゴリアイコンを構築
+  Widget _buildCategoryIcon(String category) {
+    IconData iconData;
+    Color iconColor;
+    
+    switch (category) {
+      case '野菜':
+        iconData = Icons.eco; // Grassの代わりにEco - 草・野菜のイメージ
+        iconColor = Colors.green;
+        break;
+      case '果物':
+        iconData = Icons.apple; // りんご - 果物のイメージ
+        iconColor = Colors.orange;
+        break;
+      case '肉':
+        iconData = Icons.lunch_dining; // Yakitoriの代わりにランチ - 肉のイメージ
+        iconColor = Colors.brown;
+        break;
+      case '魚':
+        iconData = Icons.set_meal; // Set Meal - 魚料理のイメージ
+        iconColor = Colors.blue;
+        break;
+      case '乳製品':
+        iconData = Icons.egg; // Egg - 卵・乳製品のイメージ
+        iconColor = Colors.brown.shade300;
+        break;
+      case '飲料':
+        iconData = Icons.local_drink; // Water Fullの代わりに飲み物 - 飲料のイメージ
+        iconColor = Colors.cyan;
+        break;
+      case 'お菓子':
+        iconData = Icons.cake; // Cake - ケーキ・お菓子のイメージ
+        iconColor = Colors.pink;
+        break;
+      case '加工食品':
+        iconData = Icons.dinner_dining; // Skillet Cooktopの代わりにディナー - 加工食品のイメージ
+        iconColor = Colors.purple;
+        break;
+      case 'パン・穀物':
+        iconData = Icons.bakery_dining; // Bakery Dining - パン・穀物のイメージ
+        iconColor = Colors.amber;
+        break;
+      case '調味料':
+        iconData = Icons.restaurant; // Chef Hatの代わりにレストラン - 調味料のイメージ
+        iconColor = Colors.deepOrange;
+        break;
+      default:
+        iconData = Icons.fastfood; // Fork Spoonの代わりにファストフード - その他のイメージ
+        iconColor = Colors.grey;
+        break;
+    }
+    
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: iconColor.withOpacity(0.05), // 透明度を0.05に調整
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Icon(
+        iconData,
+        color: iconColor,
+        size: 20,
+      ),
+    );
+  }
+
+  // シンプルな統計カード
+  Widget _buildSimpleStatCard(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.black54,
+            ),
+          ),
+        ],
       ),
     );
   }

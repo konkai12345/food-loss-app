@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../themes/natural_eco_theme.dart';
+import '../themes/natural_eco_theme_fixed.dart';
 
 class NaturalEcoCard extends StatelessWidget {
   final Widget child;
@@ -26,11 +26,11 @@ class NaturalEcoCard extends StatelessWidget {
     BoxDecoration decoration;
     
     if (isExpired) {
-      decoration = NaturalEcoTheme.expiredCardDecoration;
+      decoration = NaturalEcoThemeFixed.expiredCardDecoration;
     } else if (isExpiring) {
-      decoration = NaturalEcoTheme.expiringCardDecoration;
+      decoration = NaturalEcoThemeFixed.expiringCardDecoration;
     } else {
-      decoration = NaturalEcoTheme.cardDecoration;
+      decoration = NaturalEcoThemeFixed.cardDecoration;
     }
 
     return GestureDetector(
@@ -68,20 +68,20 @@ class NaturalEcoStatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: NaturalEcoTheme.statCardDecoration,
+      decoration: NaturalEcoThemeFixed.statCardDecoration,
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
           Icon(
             icon,
             size: 32,
-            color: iconColor ?? NaturalEcoTheme.primaryGreen,
+            color: iconColor ?? NaturalEcoThemeFixed.primaryGreen,
           ),
           const SizedBox(height: 8),
           Text(
             value,
             style: Theme.of(context).textTheme.displaySmall?.copyWith(
-              color: NaturalEcoTheme.primaryGreen,
+              color: NaturalEcoThemeFixed.primaryGreen,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -122,11 +122,11 @@ class NaturalEcoButton extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: backgroundColor != null 
             ? LinearGradient(colors: [backgroundColor!, backgroundColor!])
-            : NaturalEcoTheme.primaryGradient,
+            : NaturalEcoThemeFixed.primaryGradient,
         borderRadius: BorderRadius.circular(25),
         boxShadow: [
           BoxShadow(
-            color: (backgroundColor ?? NaturalEcoTheme.primaryGreen).withOpacity(0.3),
+            color: (backgroundColor ?? NaturalEcoThemeFixed.primaryGreen).withOpacity(0.3),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -194,10 +194,10 @@ class NaturalEcoChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: backgroundColor ?? NaturalEcoTheme.lightGrey,
+        color: backgroundColor ?? NaturalEcoThemeFixed.lightGrey,
         borderRadius: BorderRadius.circular(15),
         border: Border.all(
-          color: NaturalEcoTheme.woodBrown.withOpacity(0.2),
+          color: NaturalEcoThemeFixed.woodBrown.withOpacity(0.2),
           width: 1,
         ),
       ),
@@ -209,14 +209,14 @@ class NaturalEcoChip extends StatelessWidget {
             Icon(
               icon,
               size: 14,
-              color: textColor ?? NaturalEcoTheme.darkGrey,
+              color: textColor ?? NaturalEcoThemeFixed.darkGrey,
             ),
             const SizedBox(width: 4),
           ],
           Text(
             label,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: textColor ?? NaturalEcoTheme.darkGrey,
+              color: textColor ?? NaturalEcoThemeFixed.darkGrey,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -227,7 +227,7 @@ class NaturalEcoChip extends StatelessWidget {
               child: Icon(
                 Icons.close,
                 size: 14,
-                color: textColor ?? NaturalEcoTheme.darkGrey,
+                color: textColor ?? NaturalEcoThemeFixed.darkGrey,
               ),
             ),
           ],
@@ -254,7 +254,7 @@ class NaturalEcoExpiryBadge extends StatelessWidget {
     String text;
 
     if (isExpired) {
-      backgroundColor = NaturalEcoTheme.darkGrey;
+      backgroundColor = NaturalEcoThemeFixed.darkGrey;
       textColor = Colors.white;
       text = '期限切れ';
     } else if (daysUntilExpiry <= 2) {
@@ -262,7 +262,7 @@ class NaturalEcoExpiryBadge extends StatelessWidget {
       textColor = Colors.white;
       text = '残り${daysUntilExpiry}日';
     } else {
-      backgroundColor = NaturalEcoTheme.primaryGreen;
+      backgroundColor = NaturalEcoThemeFixed.primaryGreen;
       textColor = Colors.white;
       text = '残り${daysUntilExpiry}日';
     }
@@ -313,7 +313,7 @@ class NaturalEcoCategoryIcon extends StatelessWidget {
     switch (category.toLowerCase()) {
       case '野菜':
         iconData = Icons.eco;
-        iconColor = NaturalEcoTheme.primaryGreen;
+        iconColor = NaturalEcoThemeFixed.primaryGreen;
         break;
       case '果物':
         iconData = Icons.apple;
@@ -321,23 +321,23 @@ class NaturalEcoCategoryIcon extends StatelessWidget {
         break;
       case '肉類':
         iconData = Icons.restaurant;
-        iconColor = NaturalEcoTheme.woodBrown;
+        iconColor = NaturalEcoThemeFixed.woodBrown;
         break;
       case '魚介類':
         iconData = Icons.set_meal;
-        iconColor = NaturalEcoTheme.skyBlue;
+        iconColor = NaturalEcoThemeFixed.skyBlue;
         break;
       case '乳製品':
         iconData = Icons.egg;
-        iconColor = NaturalEcoTheme.lightBrown;
+        iconColor = NaturalEcoThemeFixed.lightBrown;
         break;
       case '調味料':
         iconData = Icons.opacity;
-        iconColor = NaturalEcoTheme.darkGreen;
+        iconColor = NaturalEcoThemeFixed.darkGreen;
         break;
       default:
         iconData = Icons.category;
-        iconColor = NaturalEcoTheme.mediumGrey;
+        iconColor = NaturalEcoThemeFixed.mediumGrey;
     }
 
     return Container(
@@ -380,11 +380,11 @@ class NaturalEcoLoadingIndicator extends StatelessWidget {
             width: size,
             height: size,
             decoration: BoxDecoration(
-              gradient: NaturalEcoTheme.primaryGradient,
+              gradient: NaturalEcoThemeFixed.primaryGradient,
               borderRadius: BorderRadius.circular(size / 2),
               boxShadow: [
                 BoxShadow(
-                  color: NaturalEcoTheme.primaryGreen.withOpacity(0.3),
+                  color: NaturalEcoThemeFixed.primaryGreen.withOpacity(0.3),
                   blurRadius: 15,
                   offset: const Offset(0, 5),
                 ),
@@ -437,17 +437,17 @@ class NaturalEcoEmptyState extends StatelessWidget {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: NaturalEcoTheme.lightGrey,
+                color: NaturalEcoThemeFixed.lightGrey,
                 borderRadius: BorderRadius.circular(40),
                 border: Border.all(
-                  color: NaturalEcoTheme.woodBrown.withOpacity(0.2),
+                  color: NaturalEcoThemeFixed.woodBrown.withOpacity(0.2),
                   width: 2,
                 ),
               ),
               child: Icon(
                 icon,
                 size: 40,
-                color: NaturalEcoTheme.mediumGrey,
+                color: NaturalEcoThemeFixed.mediumGrey,
               ),
             ),
             const SizedBox(height: 24),
@@ -460,7 +460,7 @@ class NaturalEcoEmptyState extends StatelessWidget {
             Text(
               subtitle,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: NaturalEcoTheme.mediumGrey,
+                color: NaturalEcoThemeFixed.mediumGrey,
               ),
               textAlign: TextAlign.center,
             ),
@@ -489,8 +489,8 @@ class NaturalEcoBackground extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            NaturalEcoTheme.linenBackground,
-            NaturalEcoTheme.linenBackground.withOpacity(0.8),
+            NaturalEcoThemeFixed.linenBackground,
+            NaturalEcoThemeFixed.linenBackground.withOpacity(0.8),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -515,7 +515,7 @@ class WoodTexturePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = NaturalEcoTheme.woodBrown.withOpacity(0.02)
+      ..color = NaturalEcoThemeFixed.woodBrown.withOpacity(0.02)
       ..style = PaintingStyle.fill;
 
     // 木目の線を描画

@@ -1,31 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
 import 'package:provider/provider.dart';
-import 'themes/natural_eco_theme_fixed.dart';
+import 'providers/shopping_provider.dart';
 import 'screens/home_screen_improved.dart';
 import 'screens/shopping_list_screen.dart';
 import 'screens/inventory_management_screen.dart';
-import 'screens/family_management_screen.dart';
+import 'themes/natural_eco_theme_fixed.dart';
 import 'services/notification_service_simple.dart';
-import 'providers/shopping_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // 通知サービスの初期化
-  final notificationService = NotificationServiceSimple();
-  await notificationService.initialize();
   
-  // 定期チェックの開始
-  notificationService.startPeriodicCheck();
-
-  runApp(FoodLossApp(notificationService: notificationService));
+  // 通知サービスの初期化
+  await NotificationServiceSimple().initialize();
+  
+  runApp(FoodLossApp());
 }
 
 class FoodLossApp extends StatelessWidget {
-  final NotificationServiceSimple notificationService;
-
-  const FoodLossApp({Key? key, required this.notificationService}) : super(key: key);
+  const FoodLossApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +33,6 @@ class FoodLossApp extends StatelessWidget {
         routes: {
           '/shopping_list': (context) => const ShoppingListScreen(),
           '/inventory': (context) => const InventoryManagementScreen(),
-          '/family': (context) => const FamilyManagementScreen(),
         },
       ),
     );
@@ -61,9 +52,14 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = [
     const HomeScreenImproved(),
     const ShoppingListScreen(),
-    const InventoryManagementScreen(),
-    const FamilyManagementScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // 通知の定期チェックを開始
+    NotificationServiceSimple().startPeriodicCheck();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -78,20 +74,12 @@ class _MainScreenState extends State<MainScreen> {
         },
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'ホーム',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart),
-            label: '買い物リスト',
-          ),
-          BottomNavigationBarItem(
             icon: Icon(Icons.inventory),
             label: '在庫管理',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.family_restroom),
-            label: '家族共有',
+            icon: Icon(Icons.shopping_cart),
+            label: '買い物リスト',
           ),
         ],
         selectedItemColor: NaturalEcoThemeFixed.primaryGreen,
