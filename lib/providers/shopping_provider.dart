@@ -73,6 +73,20 @@ class ShoppingProvider extends ChangeNotifier {
     _setLoading(true);
     try {
       _currentItems = await DatabaseService.getShoppingItems(listId);
+      
+      // 購入予定日順にソート（予定日が近い順、予定日がないものは最後）
+      _currentItems.sort((a, b) {
+        if (a.plannedPurchaseDate == null && b.plannedPurchaseDate == null) {
+          return 0;
+        } else if (a.plannedPurchaseDate == null) {
+          return 1; // aは最後
+        } else if (b.plannedPurchaseDate == null) {
+          return -1; // bは最後
+        } else {
+          return a.plannedPurchaseDate!.compareTo(b.plannedPurchaseDate!);
+        }
+      });
+      
       notifyListeners();
     } catch (e) {
       AppErrorHandler.handleError(e, StackTrace.current, context: 'ShoppingProvider.loadShoppingItems');
@@ -82,9 +96,9 @@ class ShoppingProvider extends ChangeNotifier {
   }
 
   // 買い物アイテム追加
-  Future<String> addShoppingItem(String productName, {int quantity = 1, String? barcode, DateTime? plannedPurchaseDate}) async {
+  Future<String> addShoppingItem(String productName, {int quantity = 1, String? barcode, DateTime? plannedPurchaseDate, String? listId}) async {
     // 単一リスト形式のため、デフォルトリストIDを使用
-    const listId = 'default_list';
+    listId ??= 'default_list';
 
     _setLoading(true);
     try {
@@ -106,26 +120,34 @@ class ShoppingProvider extends ChangeNotifier {
   }
 
   // 買い物アイテム更新
-  Future<void> updateShoppingItem(ShoppingItem item) async {
+  Future<void> updateShoppingItem(ShoppingItem item, {String? listId}) async {
+    // 単一リスト形式のため、デフォルトリストIDを使用
+    listId ??= 'default_list';
+
     _setLoading(true);
     try {
-      await DatabaseService.updateShoppingItem(item);
-      await loadShoppingItems('default_list');
+      await DatabaseService.updateShoppingItem(item, listId: listId);
+      await loadShoppingItems(listId);
     } catch (e) {
       AppErrorHandler.handleError(e, StackTrace.current, context: 'ShoppingProvider.updateShoppingItem');
+      rethrow;
     } finally {
       _setLoading(false);
     }
   }
 
   // 買い物アイテム削除
-  Future<void> deleteShoppingItem(String itemId) async {
+  Future<void> deleteShoppingItem(String itemId, {String? listId}) async {
+    // 単一リスト形式のため、デフォルトリストIDを使用
+    listId ??= 'default_list';
+
     _setLoading(true);
     try {
       await DatabaseService.deleteShoppingItem(itemId);
-      await loadShoppingItems('default_list');
+      await loadShoppingItems(listId);
     } catch (e) {
       AppErrorHandler.handleError(e, StackTrace.current, context: 'ShoppingProvider.deleteShoppingItem');
+      rethrow;
     } finally {
       _setLoading(false);
     }

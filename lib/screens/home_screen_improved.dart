@@ -86,14 +86,21 @@ class _HomeScreenImprovedState extends State<HomeScreenImproved>
         items = await DatabaseService.getAllFoodItems();
       }
 
-      final stats = await DatabaseService.getStatistics();
+      // 現在表示されているアイテムから統計を計算
+      final now = DateTime.now();
+      final expiredCount = items.where((item) => item.isExpired()).length;
+      final expiringSoonCount = items.where((item) {
+        final days = item.daysUntilExpiry;
+        // 期限切れは除いて、0〜3日後のもののみカウント
+        return days >= 0 && days <= 3 && !item.isExpired();
+      }).length;
       
       setState(() {
         _foodItems = items;
         _isLoading = false;
-        _totalItems = stats['totalItems'] ?? 0;
-        _expiredItems = stats['expiredCount'] ?? 0;
-        _expiringSoonItems = stats['soonCount'] ?? 0;
+        _totalItems = items.length;
+        _expiredItems = expiredCount;
+        _expiringSoonItems = expiringSoonCount;
       });
 
       _listAnimationController.forward();
@@ -143,7 +150,7 @@ class _HomeScreenImprovedState extends State<HomeScreenImproved>
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       color: _getCategoryBackgroundColor(foodItem.category),
       child: InkWell(
-        onTap: () => _showDeleteConfirmation(foodItem),
+        onTap: () => _editFoodItem(foodItem),
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Row(
@@ -179,69 +186,62 @@ class _HomeScreenImprovedState extends State<HomeScreenImproved>
                 ),
               ),
               const SizedBox(width: 8),
-              // 横並び3要素：数量・消費期限・消費ボタン（大きく）
-              Flexible(
+              // 横並び3要素：数量・消費期限・消費ボタン
+              Expanded(
                 child: Row(
-                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    // 数量（大きく）
-                    Flexible(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.shade50,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.blue.shade200, width: 1.5),
-                        ),
-                        child: Text(
-                          '${foodItem.quantity}個',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                            color: Colors.blue.shade700,
-                          ),
-                          overflow: TextOverflow.ellipsis,
+                    // 数量（固定幅）
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: Colors.blue.shade200, width: 1),
+                      ),
+                      child: Text(
+                        '${foodItem.quantity}個',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                          color: Colors.blue.shade700,
                         ),
                       ),
                     ),
                     const SizedBox(width: 6),
-                    // 消費期限（大きく）
-                    Flexible(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: _getExpiryColor(foodItem.expiryDate),
-                          borderRadius: BorderRadius.circular(8),
+                    // 消費期限（固定幅）
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _getExpiryColor(foodItem.expiryDate),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        _getExpiryText(foodItem.expiryDate),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
                         ),
-                        child: Text(
-                          _getExpiryText(foodItem.expiryDate),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     const SizedBox(width: 6),
-                    // 消費ボタン（大きく）
+                    // 消費ボタン
                     SizedBox(
-                      width: 65,
-                      height: 34,
+                      width: 32,
+                      height: 32,
                       child: ElevatedButton(
                         onPressed: () => _consumeFoodItem(foodItem),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
+                          backgroundColor: Colors.red.shade500,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          padding: EdgeInsets.zero,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                          ),
                         ),
-                        child: const Text(
-                          '消費',
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                        ),
+                        child: const Icon(Icons.delete_outline, size: 16),
                       ),
                     ),
                   ],
@@ -334,6 +334,58 @@ class _HomeScreenImprovedState extends State<HomeScreenImproved>
         AppErrorHandler.showErrorSnackBar(context, '食材の更新に失敗しました');
       }
       AppErrorHandler.handleError(e, StackTrace.current, context: 'HomeScreen._markAsConsumed');
+    }
+  }
+
+  void _showEditOptions(FoodItem foodItem) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('操作を選択'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit, color: Colors.blue),
+              title: const Text('編集'),
+              onTap: () {
+                Navigator.pop(context);
+                _editFoodItem(foodItem);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete, color: Colors.red),
+              title: const Text('削除'),
+              onTap: () {
+                Navigator.pop(context);
+                _showDeleteConfirmation(foodItem);
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('キャンセル'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _editFoodItem(FoodItem foodItem) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => FoodItemAddScreen(
+          editingItem: foodItem,
+          isEditing: true,
+        ),
+      ),
+    );
+    
+    if (result == true) {
+      _loadFoodItems();
     }
   }
 
@@ -612,7 +664,7 @@ class _HomeScreenImprovedState extends State<HomeScreenImproved>
     
     if (expiryDate.isBefore(now)) {
       return '期限切れ';
-    } else if (difference.inDays <= 7) {
+    } else if (difference.inDays <= 3) {
       return '${difference.inDays}日';
     } else {
       return '${difference.inDays}日';

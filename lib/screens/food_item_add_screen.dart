@@ -9,7 +9,10 @@ import '../utils/error_handler.dart';
 import '../widgets/barcode_scanner_dialog.dart';
 
 class FoodItemAddScreen extends StatefulWidget {
-  const FoodItemAddScreen({super.key});
+  const FoodItemAddScreen({super.key, this.editingItem, this.isEditing = false});
+  
+  final FoodItem? editingItem;
+  final bool isEditing;
 
   @override
   State<FoodItemAddScreen> createState() => _FoodItemAddScreenState();
@@ -39,6 +42,25 @@ class _FoodItemAddScreenState extends State<FoodItemAddScreen> {
   final List<String> _storageLocations = [
     '冷蔵庫', '冷凍庫', '常温'
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    
+    // 編集モードの場合は既存データを設定
+    if (widget.isEditing && widget.editingItem != null) {
+      _nameController.text = widget.editingItem!.name;
+      _quantityController.text = widget.editingItem!.quantity.toString();
+      _priceController.text = widget.editingItem!.price?.toString() ?? '';
+      _purchaseStoreController.text = widget.editingItem!.purchaseStore ?? '';
+      _memoController.text = widget.editingItem!.memo ?? '';
+      _expiryDate = widget.editingItem!.expiryDate;
+      _registrationDate = widget.editingItem!.registrationDate;
+      _selectedCategory = widget.editingItem!.category;
+      _selectedStorage = widget.editingItem!.storageLocation;
+      _imagePath = widget.editingItem!.imagePath;
+    }
+  }
 
   @override
   void dispose() {
@@ -214,15 +236,18 @@ class _FoodItemAddScreenState extends State<FoodItemAddScreen> {
   }
 
   void _clearScannedInfo() {
-    setState(() {
-      _lastScannedBarcode = null;
-      _scannedProductInfo = null;
-      _nameController.clear();
-      _quantityController.clear();
-      _priceController.clear();
-      _selectedCategory = '野菜';
-      _expiryDate = DateTime.now().add(const Duration(days: 7)); // デフォルトに戻す
-    });
+    // 編集モードでは既存データを消去しない
+    if (!widget.isEditing) {
+      setState(() {
+        _lastScannedBarcode = null;
+        _scannedProductInfo = null;
+        _nameController.clear();
+        _quantityController.clear();
+        _priceController.clear();
+        _selectedCategory = '野菜';
+        _expiryDate = DateTime.now().add(const Duration(days: 7)); // デフォルトに戻す
+      });
+    }
   }
 
   Future<void> _saveFoodItem() async {
@@ -232,10 +257,10 @@ class _FoodItemAddScreenState extends State<FoodItemAddScreen> {
 
     try {
       final foodItem = FoodItem(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        id: widget.isEditing ? widget.editingItem!.id : DateTime.now().millisecondsSinceEpoch.toString(),
         name: _nameController.text,
         expiryDate: _expiryDate,
-        registrationDate: _registrationDate,
+        registrationDate: widget.isEditing ? widget.editingItem!.registrationDate : _registrationDate,
         quantity: int.parse(_quantityController.text),
         storageLocation: _selectedStorage,
         category: _selectedCategory,
@@ -245,24 +270,34 @@ class _FoodItemAddScreenState extends State<FoodItemAddScreen> {
         purchaseStore: _purchaseStoreController.text.isEmpty ? null : _purchaseStoreController.text,
       );
 
-      await DatabaseService.addFoodItem(foodItem);
-      
-      if (mounted) {
-        // 成功メッセージを表示
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('食材を追加しました'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
-          ),
-        );
-        
-        // 在庫管理画面に戻る（trueを返してリストを更新）
-        Navigator.pop(context, true);
+      if (widget.isEditing) {
+        await DatabaseService.updateFoodItem(foodItem);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('食材を更新しました'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+          Navigator.pop(context, true);
+        }
+      } else {
+        await DatabaseService.addFoodItem(foodItem);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('食材を追加しました'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+          Navigator.pop(context, true);
+        }
       }
     } catch (e) {
       if (mounted) {
-        AppErrorHandler.showErrorSnackBar(context, '食材の追加に失敗しました');
+        AppErrorHandler.showErrorSnackBar(context, widget.isEditing ? '食材の更新に失敗しました' : '食材の追加に失敗しました');
       }
       AppErrorHandler.handleError(e, StackTrace.current, context: 'FoodAddScreen._saveFoodItem');
     }
@@ -272,7 +307,7 @@ class _FoodItemAddScreenState extends State<FoodItemAddScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('食材を追加'),
+        title: Text(widget.isEditing ? '食材を編集' : '食材を追加'),
         backgroundColor: Colors.green,
         foregroundColor: Colors.white,
       ),
@@ -335,21 +370,24 @@ class _FoodItemAddScreenState extends State<FoodItemAddScreen> {
                       ),
                     ),
                   ] else ...[
-                    ElevatedButton.icon(
-                      onPressed: _isScanning ? null : _scanBarcode,
-                      icon: _isScanning 
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.camera_alt),
-                      label: Text(_isScanning ? 'スキャン中...' : 'バーコードをスキャン'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue.shade700,
-                        foregroundColor: Colors.white,
+                    // 編集モードではバーコードスキャンを無効に
+                    if (!widget.isEditing) ...[
+                      ElevatedButton.icon(
+                        onPressed: _isScanning ? null : _scanBarcode,
+                        icon: _isScanning 
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.camera_alt),
+                        label: Text(_isScanning ? 'スキャン中...' : 'バーコードをスキャン'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue.shade700,
+                          foregroundColor: Colors.white,
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ],
               ),

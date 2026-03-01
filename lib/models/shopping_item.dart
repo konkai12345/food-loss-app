@@ -27,7 +27,7 @@ class ShoppingItem {
         'productName': productName,
         'quantity': quantity,
         'barcode': barcode,
-        'isPurchased': isPurchased,
+        'isPurchased': isPurchased ? 1 : 0,
         'createdDate': createdDate.toIso8601String(),
         'plannedPurchaseDate': plannedPurchaseDate?.toIso8601String(),
       };
@@ -70,6 +70,26 @@ class ShoppingItem {
   @override
   String toString() {
     return 'ShoppingItem(id: $id, listId: $listId, productName: $productName, quantity: $quantity, barcode: $barcode, isPurchased: $isPurchased, createdDate: $createdDate)';
+  }
+
+  // 購入予定日までの日数を計算
+  int? get daysUntilPurchase {
+    if (plannedPurchaseDate == null) return null;
+    final now = DateTime.now();
+    return plannedPurchaseDate!.difference(now).inDays;
+  }
+
+  // 購入予定日を過ぎているか判定
+  bool isOverdue() {
+    if (plannedPurchaseDate == null) return false;
+    return DateTime.now().isAfter(plannedPurchaseDate!);
+  }
+
+  // 購入予定日が近いか判定（1日以内）
+  bool isUrgent() {
+    if (plannedPurchaseDate == null) return false;
+    final days = daysUntilPurchase;
+    return days != null && days <= 1 && days >= 0;
   }
 
   @override

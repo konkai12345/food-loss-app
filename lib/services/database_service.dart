@@ -16,6 +16,19 @@ class DatabaseService {
   // Web環境用のメモリ内データ
   static List<FoodItem> _mockFoodItems = [];
   static List<ShoppingItem> _mockShoppingItems = [];
+  static List<ShoppingList> _mockShoppingLists = [];
+  
+  // Web環境の初期化
+  static void _initializeMockData() {
+    if (_mockShoppingLists.isEmpty) {
+      _mockShoppingLists.add(ShoppingList(
+        id: 'default_list',
+        name: 'デフォルト買い物リスト',
+        createdDate: DateTime.now(),
+        isCompleted: false,
+      ));
+    }
+  }
 
   // データベース初期化
   static Future<Database> get database async {
@@ -30,8 +43,9 @@ class DatabaseService {
     
     return await openDatabase(
       path,
-      version: 1,
+      version: 2, // バージョンを上げてマイグレーションを実行
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
   }
 
@@ -65,7 +79,7 @@ class DatabaseService {
       )
     ''');
 
-    // 買い物アイテムテーブル
+    // 買い物アイテムテーブル（バージョン2からplannedPurchaseDateを含む）
     await db.execute('''
       CREATE TABLE shopping_items (
         id TEXT PRIMARY KEY,
@@ -75,6 +89,7 @@ class DatabaseService {
         barcode TEXT,
         isPurchased INTEGER NOT NULL DEFAULT 0,
         createdDate TEXT NOT NULL,
+        plannedPurchaseDate TEXT,
         FOREIGN KEY (listId) REFERENCES shopping_lists(id)
       )
     ''');
@@ -126,6 +141,24 @@ class DatabaseService {
     await db.execute('CREATE INDEX idx_recipe_cache_category ON recipe_cache(category)');
     await db.execute('CREATE INDEX idx_recipe_cache_cachedDate ON recipe_cache(cachedDate)');
     await db.execute('CREATE INDEX idx_shared_groups_createdBy ON shared_groups(createdBy)');
+
+    // デフォルト買い物リストを作成
+    await db.insert('shopping_lists', {
+      'id': 'default_list',
+      'name': 'デフォルト買い物リスト',
+      'createdDate': DateTime.now().toIso8601String(),
+      'isCompleted': 0,
+    });
+  }
+
+  // データベースマイグレーション
+  static Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // バージョン2でplannedPurchaseDateカラムを追加
+      await db.execute('''
+        ALTER TABLE shopping_items ADD COLUMN plannedPurchaseDate TEXT
+      ''');
+    }
   }
 
   // 食材アイテム追加
@@ -302,7 +335,7 @@ class DatabaseService {
   static Future<String> createShoppingList(String name) async {
     if (kIsWeb) {
       // Web環境ではモックデータを返す
-      return await _getMockShoppingList();
+      return 'default_list';
     } else {
       final db = await database;
       final id = DateTime.now().millisecondsSinceEpoch.toString();
@@ -318,15 +351,12 @@ class DatabaseService {
 
   // 全買い物リスト取得
   static Future<List<ShoppingList>> getAllShoppingLists() async {
+    _initializeMockData(); // Web環境の初期化を保証
     if (kIsWeb) {
-      // Web環境ではモックデータを返す
-      return await _getMockShoppingLists();
+      return _mockShoppingLists;
     } else {
       final db = await database;
-      final List<Map<String, dynamic>> maps = await db.query(
-        'shopping_lists',
-        orderBy: 'createdDate DESC',
-      );
+      final List<Map<String, dynamic>> maps = await db.query('shopping_lists');
       return List.generate(maps.length, (i) => ShoppingList.fromJson(maps[i]));
     }
   }
@@ -445,7 +475,7 @@ class DatabaseService {
   }
 
   // 買い物アイテム更新
-  static Future<void> updateShoppingItem(ShoppingItem item) async {
+  static Future<void> updateShoppingItem(ShoppingItem item, {String? listId}) async {
     if (kIsWeb) {
       // Web環境ではメモリ内データを更新
       final index = _mockShoppingItems.indexWhere((mockItem) => mockItem.id == item.id);
@@ -504,7 +534,7 @@ static Future<List<ShoppingItem>> _getMockShoppingItems() async {
   return [
     ShoppingItem(
       id: '1',
-      listId: 'mock-list-id',
+      listId: 'default_list',
       productName: 'トマト',
       quantity: 5,
       barcode: '123456789',
@@ -513,7 +543,7 @@ static Future<List<ShoppingItem>> _getMockShoppingItems() async {
     ),
     ShoppingItem(
       id: '2',
-      listId: 'mock-list-id',
+      listId: 'default_list',
       productName: '牛乳',
       quantity: 1,
       barcode: '987654321',
@@ -523,15 +553,11 @@ static Future<List<ShoppingItem>> _getMockShoppingItems() async {
   ];
 }
 
-static Future<String> _getMockShoppingList() async {
-  return 'mock-list-id';
-}
-
 static Future<List<ShoppingList>> _getMockShoppingLists() async {
   return [
     ShoppingList(
-      id: '1',
-      name: '今週の買い物',
+      id: 'default_list',
+      name: 'デフォルト買い物リスト',
       createdDate: DateTime.now().subtract(const Duration(days: 1)),
     ),
   ];
